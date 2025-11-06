@@ -1,0 +1,292 @@
+if shared.moelibrary then shared.moelibrary:unload() end
+
+-- // services
+local uis = cloneref(game:GetService("UserInputService"))
+local gs = cloneref(game:GetService("GuiService"))
+local core = cloneref(game:GetService("CoreGui"))
+
+-- // library
+local library = {
+    keybind = Enum.KeyCode.RightShift,
+    notifPos = "BR", -- bottom right
+
+    palette = {
+        accent = Color3.fromRGB(240, 100, 100),
+        mainbg = Color3.fromRGB(15, 15, 15),
+        titlebg = Color3.fromRGB(20, 20, 20),
+        stroke = Color3.fromRGB(50, 50, 50),
+        parentstroke = Color3.fromRGB(0, 0, 0),
+        selected = Color3.fromRGB(240, 240, 240),
+        deselected = Color3.fromRGB(180, 180, 180),
+        font = Font.new("rbxassetid://12187365364")
+    },
+
+    connections = {}
+}
+
+function library:unload()
+    for _, connection in self.connections do
+        connection:Disconnect()
+    end
+
+    self.ui:Destroy()
+    table.clear(self)
+
+    self = nil
+end
+
+-- // helper functions
+local function new(className: string, properties: { [string]: any }?): Instance
+    local object = Instance.new(className)
+
+    if properties then for property, value in properties do
+        object[property] = value
+    end end
+
+    return object
+end
+
+local function connect(signal: RBXScriptSignal, callback: (any) -> () ): RBXScriptConnection
+    local connection = signal:Connect(callback)
+    table.insert(library.connections, connection)
+    return connection
+end
+
+-- // ui helper functions
+local function addstroke( --TODO: redo for new uistroke update
+    object: GuiObject,
+    double: boolean,
+    color: Color3?,
+    inner: boolean?,
+    text: boolean?,
+    ): (UIStroke, UIStroke?)
+
+    local doublestroke; local stroke = new("UIStroke", {
+        ApplyStrokeMode = not text and Enum.ApplyStrokeMode.Border, -- cuz the default is contextual
+        Color = color or library.palette.stroke,
+        Parent = inner and new("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, -2, 1, -2),
+            Position = UDim2.fromOffset(1, 1),
+            Parent = object
+        }) or object
+    })
+
+    if double then
+        doublestroke = new("UIStroke", {
+            ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            Color = library.palette.parentstroke,
+            Parent = new("Frame", {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 2, 1, 2),
+                Position = UDim2.fromOffset(-1, -1),
+                Parent = object
+            })
+        })
+
+        return stroke, doublestroke
+    end
+
+    return stroke
+end
+
+local function addline(object: GuiObject, pos: string): Frame
+    return new("Frame", {
+        BackgroundColor3 = library.palette.stroke,
+        BorderSizePixel = 0,
+		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.new(0, 0, 1, -1),
+        Parent = object
+    })
+end
+
+local function colortext(text: string, color: Color3): string
+    local r, g, b = math.round(color.R / 255), math.round(color.G / 255), math.round(color.G / 255)
+    return `<font color="rgb({r}, {g}, {b})">{text}</font>`
+end
+
+local function addpadding(object: GuiObject, paddings: { [string]: number }): UIPadding
+    return new("UIPadding", {
+        PaddingLeft = UDim.new(0, paddings.L or 0),
+        PaddingRight = UDim.new(0, paddings.R or 0),
+        PaddingBottom = UDim.new(0, paddings.B or 0),
+        PaddingTop = UDim.new(0, paddings.T or 0),
+        Parent = object
+    })
+end
+
+-- // ui objects
+local container = new("ScreenGui", {
+    IgnoreGuiInset = true,
+    Parent = gethui and gethui() or core
+})  library.ui = container
+
+local notifications = new("Frame", {
+    BackgroundTransparency = 1,
+    Position = UDim2.fromOffset(8, 8),
+    Size = UDim2.new(1, -16, 1, -16),
+    Parent = container
+})
+-- // ui functions
+function library:window(name: string, version: string | number)
+    local window = new("Frame", {
+        AnchorPoint = Vector2.new(.5, .5),
+        Position = UDim2.fromScale(.5, .5),
+        BackgroundColor3 = self.palette.mainbg,
+        Size = UDim2.fromOffset(400, 400),
+        Parent = container
+    }); addstroke(window, true)
+
+    connect(uis.InputChanged, function(input)
+        if input.KeyCode == self.keybind then
+            window.Visible = not window.Visible
+        end
+    end)
+
+    local titleframe = new("Frame", {
+        BackgroundColor3 = self.palette.titlebg,
+        Size = UDim2.new(1, 0, 0, 30),
+        BorderSizePixel = 0,
+        Parent = window
+    }); addline(titleframe, "B")
+
+    local title = new("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.fromOffset(8, 0),
+        FontFace = self.palette.font,
+        TextColor3 = self.palette.selected,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextSize = 14,
+        RichText = true,
+        Text = name .. " " .. colortext(tostring(version), self.palette.deselected)
+    }) title.Size = UDim2.new(0, title.TextBounds.X, 1, 0)
+
+    local tabsframe = new("Frame", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(1, -8, 0, 4),
+        Size = UDim2.new(1, -title.AbsoluteSize.X - 8, 1, -8),
+        Parent = titleframe
+    }); new("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal,
+        HorizontalAlignment = Enum.HorizontalAlignment.Right,
+        Parent = tabsframe
+    })
+
+    local tabcomponentholder = new("Frame", {
+        BackgroundTransparency = 1,
+        Size = UDim2.new(1, 0, 1, -30),
+        Position = UDim2.fromOffset(0, 30),
+        Parent = window
+    })
+
+    local windowfuncs = {}
+
+    local selectedtab = nil
+
+    local function selecttab(tabbutton: TextButton)
+        if selectedtab then
+            selectedtab.TextColor3 = self.palette.deselected
+            tabcomponentholder[selectedtab.Name].Visible = false
+        end
+
+        tabcomponentholder[tabbutton.Name].Visible = true
+        tabbutton.TextColor3 = self.palette.accent
+    end
+
+    function windowfuncs:tab(name: string)
+        local tabbutton = new("TextButton", {
+            Name = name,
+            BackgroundTransparency = 1,
+            AutoButtonColor = false,
+            FontFace = library.palette.font,
+            TextColor = library.palette.deselected,
+            TextSize = 14,
+            Text = name,
+            Parent = tabsframe
+        }) tabbutton.Size = UDim2.new(0, tabbutton.TextBounds.X + 8, 1, 0)
+
+        local tabcomponents = new("ScrollingFrame", {
+            Name = name,
+            BackgroundTransparency = 1,
+            Size = UDim2.fromScale(1, 1),
+            AutomaticCanvasSize = Enum.AutomaticSize.Y,
+            CanvasSize = UDim2.new(),
+            ScrollBarThickness = 0,
+            Parent = tabcomponentholder
+        })
+
+        local tabfuncs = {}
+
+        function tabfuncs:section(name: string)
+            local section = new("Frame", {
+                    -- ...
+                })
+
+            local sectionfuncs = {}
+
+            function sectionfuncs:label(text: string)
+                    -- ...
+            end
+
+            function sectionfuncs:button(name: string, callback: () -> ())
+                    -- ...
+            end
+
+            function sectionfuncs:toggle(name: string, default: boolean, callback: (boolean) -> ())
+                    -- ...
+            end
+
+            function sectionfuncs:slider(options: {
+                    name: string,
+                    min: number?,
+                    max: number,
+                    default: number?,
+                    callback: (number) -> ()
+            })
+                    -- ...
+            end
+
+            function sectionfuncs:dropdown(options: {
+                    name: string,
+                    options: {string},
+                    default: {string} | string?,
+                    multi: boolean?,
+                    callback: ({string}) -> ()
+            })
+                -- ...
+            end
+
+            function sectionfuncs:keybind(name: string, default: any, callback: (Enum.KeyCode) -> ())
+                -- ...
+            end
+
+            function sectionfuncs:colorpicker(name: string, default: {Color3, number}, callback: (Color3, number) -> ())
+                -- ...
+            end
+
+            function sectionfuncs:input(options: {
+                name: string,
+                default: string?,
+                placeholder: string?,
+                callback: (string) -> ()
+            })
+                -- ...
+            end
+
+            return sectionfuncs
+        end
+
+        return tabfuncs
+    end
+
+    return windowfuncs
+end
+
+function library:notify(text: string)
+    -- ...
+end
+
+-- // init
+shared.moelibrary = library
+return library
