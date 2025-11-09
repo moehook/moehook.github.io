@@ -1,4 +1,4 @@
-local repo = "https://raw.githubusercontent.com/moehook/moehook.github.io/refs/heads/main/games/"
+local repo = moehook_beta and "https://raw.githubusercontent.com/moehook/moehook.github.io/refs/heads/main/games/" or "https://moehook.github.io/games/" -- page takes a while to update
 
 local success, result = pcall(game.HttpGet, game, repo..game.PlaceId..moehook_beta and "_beta" or "")
 
