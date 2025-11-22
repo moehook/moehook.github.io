@@ -1,9 +1,9 @@
-local repo = "https://raw.githubusercontent.com/moehook/script/refs/heads/"..if moehook_beta then "beta" else "main".."/games/"
+local Repo = "https://raw.githubusercontent.com/moehook/script/refs/heads/"..if moehook_beta then "beta" else "main".."/games/"
 
-local success, result = pcall(game.HttpGet, game, repo..game.PlaceId..".luau")
+local Success, Result = pcall(game.HttpGet, game, Repo..".luau")
 
-if not success or result == "404: Not Found" then
-  loadstring(result, "moehook")()
-else
+if not Success or Result == "404: Not Found" then
   loadstring(repo.."universal.luau", "moehook")()
+else
+  loadstring(Result, "moehook")()
 end
