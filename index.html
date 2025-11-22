@@ -3,7 +3,7 @@ local Repo = "https://raw.githubusercontent.com/moehook/script/refs/heads/"..if 
 local Success, Result = pcall(game.HttpGet, game, Repo..".luau")
 
 if not Success or Result == "404: Not Found" then
-  loadstring(repo.."universal.luau", "moehook")()
+  loadstring(Repo.."universal.luau", "moehook")()
 else
   loadstring(Result, "moehook")()
 end
