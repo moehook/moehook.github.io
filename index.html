@@ -1,6 +1,6 @@
 local repo = "https://raw.githubusercontent.com/moehook/script/refs/heads/"..moehook_beta and "beta" or "main".."/games/"
 
-local success, result = pcall(game.HttpGet, game, repo..game.PlaceId)
+local success, result = pcall(game.HttpGet, game, repo..game.PlaceId..".luau")
 
 if not success or result == "404: Not Found" then
   loadstring(result, "moehook")()
